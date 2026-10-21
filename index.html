@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تسجيل الطلاب</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--text:#1d2433;--mut:#667085;--pri:#2563eb;--bd:#dfe3ec;--ok:#16a34a;--err:#dc2626}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#1a2030;--text:#e8ecf5;--mut:#98a2b8;--bd:#2c3448;--pri:#5b8cff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,"Segoe UI",Arial,sans-serif;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding:20px 14px}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--text);border-radius:10px;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:20px}
+h1{font-size:1.3rem;margin:0 0 14px}
+label{display:block;margin:12px 0 4px;font-size:.92rem;color:var(--mut)}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--text);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{margin-top:16px;padding:11px 18px;border:0;border-radius:10px;background:var(--pri);color:#fff;font:inherit;cursor:pointer}
+.btn.sm{margin:0;padding:5px 10px;font-size:.85rem}
+.btn.red{background:var(--err)}.btn.green{background:var(--ok)}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.bar div{display:flex;gap:8px;flex-wrap:wrap}
+.msg{margin-top:12px;font-size:.92rem}.ok{color:var(--ok)}.err{color:var(--err)}
+.hint{font-size:.82rem;color:var(--mut)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{padding:9px 8px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}
+th{color:var(--mut);font-weight:600}
+.tag{padding:2px 8px;border-radius:99px;font-size:.78rem;background:var(--bd)}
+.tag.good{background:#16a34a22;color:var(--ok)}.tag.bad{background:#dc262622;color:var(--err)}
+.hide{display:none}
+a{color:var(--pri)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <button id="tabS" class="on">تسجيل طالب</button>
+    <button id="tabA">لوحة المدير</button>
+  </div>
+
+  <div id="viewS" class="card">
+    <h1>استمارة تسجيل الطالب</h1>
+    <label>الاسم الكامل</label>
+    <input id="name" maxlength="80" placeholder="مثال: أحمد علي حسن">
+    <div class="row">
+      <div><label>الصف</label>
+        <select id="grade"><option>الأول متوسط</option><option>الثاني متوسط</option><option>الثالث متوسط</option></select></div>
+      <div><label>الشعبة</label>
+        <select id="section"><option>أ</option><option>ب</option><option>ج</option><option>د</option><option>هـ</option><option>و</option><option>ز</option></select></div>
+    </div>
+    <label>معرّف التليكرام</label>
+    <input id="tg" dir="ltr" placeholder="@username" maxlength="33">
+    <div class="hint">من 5 إلى 32 حرفاً: إنجليزية وأرقام و _ ويبدأ بحرف.</div>
+    <button class="btn" id="send">إرسال</button>
+    <div class="msg" id="sMsg"></div>
+  </div>
+
+  <div id="viewL" class="card hide">
+    <h1>دخول المدير</h1>
+    <label>كلمة المرور</label>
+    <input id="pw" type="password" placeholder="••••••">
+    <button class="btn" id="login">دخول</button>
+    <div class="msg err" id="lMsg"></div>
+  </div>
+
+  <div id="viewA" class="card hide">
+    <div class="bar">
+      <h1 style="margin:0">جدول الطلاب (<span id="cnt">0</span>)</h1>
+      <div>
+        <button class="btn sm green" id="exp">تصدير Excel / CSV</button>
+        <button class="btn sm" id="refresh">تحديث</button>
+        <button class="btn sm red" id="logout">خروج</button>
+      </div>
+    </div>
+    <div class="hint" style="margin:8px 0">زر «تحقق» يفتح حساب التليكرام في نافذة جديدة لتتأكد أنه حقيقي، ثم عيّن حالته.</div>
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>الاسم</th><th>الصف</th><th>الشعبة</th><th>التليكرام</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div class="msg hint" id="aMsg"></div>
+  </div>
+</div>
+
+<script>
+// إعدادات Firebase (نستخدم databaseURL فقط عبر واجهة REST بدون مكتبات)
+const firebaseConfig = {
+  apiKey: "AIzaSyBl7kpSKl2dHSE9Scoxf1UQ2Usw1lWNPaQ",
+  authDomain: "tele-772b6.firebaseapp.com",
+  databaseURL: "https://tele-772b6-default-rtdb.firebaseio.com",
+  projectId: "tele-772b6",
+  storageBucket: "tele-772b6.firebasestorage.app",
+  messagingSenderId: "139206507761",
+  appId: "1:139206507761:web:34817a757d62eabd127d50",
+  measurementId: "G-QGGQPCYP3W"
+};
+const BASE = firebaseConfig.databaseURL.replace(/\/$/, "") + "/students";
+const ADMIN_PW = "asas123";
+const TG_RE = /^[A-Za-z][A-Za-z0-9_]{4,31}$/;
+const $ = id => document.getElementById(id);
+let students = [], timer = null;
+const isAdmin = () => sessionStorage.getItem("adm") === "1";
+const statusText = s => s === "valid" ? "حقيقي" : s === "invalid" ? "غير حقيقي" : "قيد المراجعة";
+
+function show(v){
+  ["viewS","viewL","viewA"].forEach(x => $(x).classList.toggle("hide", x !== v));
+  $("tabS").classList.toggle("on", v === "viewS");
+  $("tabA").classList.toggle("on", v !== "viewS");
+  clearInterval(timer);
+  if(v === "viewA"){ load(); timer = setInterval(load, 15000); }
+}
+$("tabS").onclick = () => show("viewS");
+$("tabA").onclick = () => show(isAdmin() ? "viewA" : "viewL");
+
+async function load(){
+  try{
+    const r = await fetch(BASE + ".json");
+    if(!r.ok) throw new Error(r.status);
+    const o = await r.json() || {};
+    students = Object.keys(o).map(k => Object.assign({id: k}, o[k])).sort((a,b) => (a.ts||0) - (b.ts||0));
+    $("aMsg").textContent = ""; render();
+  }catch(e){ $("aMsg").className = "msg err"; $("aMsg").textContent = "تعذّر جلب البيانات. تحقق من الاتصال ومن قواعد Firebase."; }
+}
+
+$("send").onclick = async () => {
+  const name = $("name").value.trim(), tg = $("tg").value.trim().replace(/^@/, ""), m = $("sMsg");
+  if(name.length < 3){ m.className = "msg err"; m.textContent = "يرجى كتابة الاسم الكامل."; return; }
+  if(!TG_RE.test(tg)){ m.className = "msg err"; m.textContent = "صيغة معرّف التليكرام غير صحيحة."; return; }
+  const rec = {name, grade: $("grade").value, section: $("section").value, tg, status: "pending", ts: Date.now()};
+  $("send").disabled = true;
+  try{
+    const r = await fetch(BASE + ".json", {method: "POST", body: JSON.stringify(rec)});
+    if(!r.ok) throw new Error(r.status);
+    m.className = "msg ok"; m.textContent = "تم إرسال بياناتك بنجاح ✓";
+    $("name").value = ""; $("tg").value = "";
+  }catch(e){ m.className = "msg err"; m.textContent = "تعذّر الإرسال. تحقق من الاتصال بالإنترنت."; }
+  $("send").disabled = false;
+};
+
+$("login").onclick = () => {
+  if($("pw").value === ADMIN_PW){ sessionStorage.setItem("adm","1"); $("pw").value = ""; $("lMsg").textContent = ""; show("viewA"); }
+  else $("lMsg").textContent = "كلمة المرور غير صحيحة.";
+};
+$("pw").addEventListener("keydown", e => { if(e.key === "Enter") $("login").click(); });
+$("logout").onclick = () => { sessionStorage.removeItem("adm"); show("viewL"); };
+$("refresh").onclick = load;
+
+async function upd(s, patch){
+  try{
+    const r = await fetch(BASE + "/" + s.id + ".json", {method: "PATCH", body: JSON.stringify(patch)});
+    if(!r.ok) throw 0; Object.assign(s, patch); render();
+  }catch(e){ $("aMsg").className = "msg err"; $("aMsg").textContent = "تعذّر التعديل."; }
+}
+async function del(s){
+  if(!confirm("حذف هذا الطالب؟")) return;
+  try{
+    const r = await fetch(BASE + "/" + s.id + ".json", {method: "DELETE"});
+    if(!r.ok) throw 0; students = students.filter(x => x.id !== s.id); render();
+  }catch(e){ $("aMsg").className = "msg err"; $("aMsg").textContent = "تعذّر الحذف."; }
+}
+
+// تصدير CSV (يُفتح في Excel بالعربية بشكل صحيح)
+function csvCell(v){
+  v = String(v ?? "");
+  if(/^[=+\-@]/.test(v)) v = "'" + v;
+  return '"' + v.replace(/"/g, '""') + '"';
+}
+$("exp").onclick = () => {
+  if(!students.length){ $("aMsg").textContent = "لا توجد بيانات للتصدير."; return; }
+  const head = ["الاسم","الصف","الشعبة","معرف التليكرام","هل المعرف حقيقي؟"];
+  const lines = [head.map(csvCell).join(",")].concat(students.map(s =>
+    [s.name, s.grade, s.section, "@" + s.tg, statusText(s.status)].map(csvCell).join(",")));
+  const blob = new Blob(["\ufeff" + lines.join("\r\n")], {type: "text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "students.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+
+function render(){
+  $("cnt").textContent = students.length;
+  const tb = $("rows"); tb.textContent = "";
+  students.forEach((s, i) => {
+    const tr = document.createElement("tr");
+    const cell = t => { const td = document.createElement("td"); td.textContent = t; tr.appendChild(td); return td; };
+    cell(i + 1); cell(s.name); cell(s.grade); cell(s.section || "");
+    const tdT = cell(""), a = document.createElement("a");
+    a.href = "https://t.me/" + encodeURIComponent(s.tg); a.target = "_blank"; a.rel = "noopener";
+    a.dir = "ltr"; a.textContent = "@" + s.tg; tdT.appendChild(a);
+    const tdS = cell(""), tag = document.createElement("span");
+    tag.className = "tag " + (s.status === "valid" ? "good" : s.status === "invalid" ? "bad" : "");
+    tag.textContent = statusText(s.status); tdS.appendChild(tag);
+    const tdA = cell(""); tdA.style.display = "flex"; tdA.style.gap = "4px";
+    const mk = (t, cls, fn) => { const b = document.createElement("button"); b.className = "btn sm " + cls; b.textContent = t; b.onclick = fn; tdA.appendChild(b); };
+    mk("تحقق", "", () => window.open("https://t.me/" + encodeURIComponent(s.tg), "_blank", "noopener"));
+    mk("✓", "green", () => upd(s, {status: "valid"}));
+    mk("✗", "red", () => upd(s, {status: "invalid"}));
+    mk("حذف", "red", () => del(s));
+    tb.appendChild(tr);
+  });
+  if(!students.length){ const tr = document.createElement("tr"), td = document.createElement("td"); td.colSpan = 7; td.textContent = "لا توجد بيانات بعد."; tr.appendChild(td); tb.appendChild(tr); }
+}
+if(isAdmin()) show("viewA");
+</script>
+</body>
+</html>
