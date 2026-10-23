@@ -131,9 +131,20 @@ $("send").onclick = async () => {
   if(!TG_RE.test(tg)){ m.className = "msg err"; m.textContent = "صيغة معرّف التليكرام غير صحيحة."; return; }
   const rec = {name, grade: $("grade").value, section: $("section").value, tg, status: "pending", ts: Date.now()};
   $("send").disabled = true;
+  const key = tg.toLowerCase();
+  const dupMsg = "⚠️ بيانات هذا الطالب ومعرّف التليكرام مرسلة بالفعل، ولا داعي لتكرار الإرسال.";
   try{
-    const r = await fetch(BASE + ".json", {method: "POST", body: JSON.stringify(rec)});
+    let sent = []; try{ sent = JSON.parse(localStorage.getItem("sentTg") || "[]"); }catch(_){}
+    if(sent.includes(key)){ m.className = "msg err"; m.textContent = dupMsg; $("send").disabled = false; return; }
+    const chk = await fetch(BASE + "/" + key + ".json");
+    if(!chk.ok) throw new Error(chk.status);
+    if(await chk.json() !== null){
+      try{ sent.push(key); localStorage.setItem("sentTg", JSON.stringify(sent)); }catch(_){}
+      m.className = "msg err"; m.textContent = dupMsg; $("send").disabled = false; return;
+    }
+    const r = await fetch(BASE + "/" + key + ".json", {method: "PUT", body: JSON.stringify(rec)});
     if(!r.ok) throw new Error(r.status);
+    try{ sent.push(key); localStorage.setItem("sentTg", JSON.stringify(sent)); }catch(_){}
     m.className = "msg ok"; m.textContent = "تم إرسال بياناتك بنجاح ✓";
     $("name").value = ""; $("tg").value = "";
   }catch(e){ m.className = "msg err"; m.textContent = "تعذّر الإرسال. تحقق من الاتصال بالإنترنت."; }
