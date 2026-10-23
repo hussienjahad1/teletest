@@ -9,7 +9,8 @@
 @media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#1a2030;--text:#e8ecf5;--mut:#98a2b8;--bd:#2c3448;--pri:#5b8cff}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,"Segoe UI",Arial,sans-serif;line-height:1.6}
-.wrap{max-width:900px;margin:0 auto;padding:20px 14px}
+.acts{display:flex;gap:4px}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 14px}
 .tabs{display:flex;gap:8px;margin-bottom:16px}
 .tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--text);border-radius:10px;font:inherit;cursor:pointer}
 .tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
@@ -204,8 +205,8 @@ function render(){
     const tdS = cell(""), tag = document.createElement("span");
     tag.className = "tag " + (s.status === "valid" ? "good" : s.status === "invalid" ? "bad" : "");
     tag.textContent = statusText(s.status); tdS.appendChild(tag);
-    const tdA = cell(""); tdA.style.display = "flex"; tdA.style.gap = "4px";
-    const mk = (t, cls, fn) => { const b = document.createElement("button"); b.className = "btn sm " + cls; b.textContent = t; b.onclick = fn; tdA.appendChild(b); };
+    const tdA = cell(""), box = document.createElement("div"); box.className = "acts"; tdA.appendChild(box);
+    const mk = (t, cls, fn) => { const b = document.createElement("button"); b.className = "btn sm " + cls; b.textContent = t; b.onclick = fn; box.appendChild(b); };
     mk("تحقق", "", () => window.open("https://t.me/" + encodeURIComponent(s.tg), "_blank", "noopener"));
     mk("✓", "green", () => upd(s, {status: "valid"}));
     mk("✗", "red", () => upd(s, {status: "invalid"}));
