@@ -73,6 +73,7 @@ a{color:var(--pri)}
       <h1 style="margin:0">جدول الطلاب (<span id="cnt">0</span>)</h1>
       <div>
         <button class="btn sm green" id="exp">تصدير Excel / CSV</button>
+        <button class="btn sm red" id="dedupe">حذف المعرّفات المكررة</button>
         <button class="btn sm" id="refresh">تحديث</button>
         <button class="btn sm red" id="logout">خروج</button>
       </div>
@@ -159,6 +160,25 @@ $("login").onclick = () => {
 $("pw").addEventListener("keydown", e => { if(e.key === "Enter") $("login").click(); });
 $("logout").onclick = () => { sessionStorage.removeItem("adm"); show("viewL"); };
 $("refresh").onclick = load;
+$("dedupe").onclick = async () => {
+  const groups = {};
+  students.forEach(s => { const k = String(s.tg || "").toLowerCase(); (groups[k] = groups[k] || []).push(s); });
+  const rank = s => s.status === "valid" ? 0 : s.status === "invalid" ? 1 : 2;
+  const toDel = [];
+  Object.values(groups).forEach(g => {
+    if(g.length > 1){ g.sort((a, b) => rank(a) - rank(b) || (a.ts || 0) - (b.ts || 0)); toDel.push(...g.slice(1)); }
+  });
+  const m = $("aMsg");
+  if(!toDel.length){ m.className = "msg hint"; m.textContent = "لا توجد معرّفات مكررة."; return; }
+  if(!confirm("سيتم حذف " + toDel.length + " سجل مكرر مع بياناتها، والإبقاء على سجل واحد لكل معرّف. هل تريد المتابعة؟")) return;
+  try{
+    const res = await Promise.all(toDel.map(s => fetch(BASE + "/" + s.id + ".json", {method: "DELETE"})));
+    if(res.some(r => !r.ok)) throw 0;
+    await load();
+    m.className = "msg ok"; m.textContent = "تم حذف " + toDel.length + " سجل مكرر ✓";
+  }catch(e){ await load(); m.className = "msg err"; m.textContent = "تعذّر حذف بعض السجلات."; }
+};
+
 
 async function upd(s, patch){
   try{
